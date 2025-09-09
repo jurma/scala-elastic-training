@@ -16,7 +16,7 @@ class StudentService(repo: StudentRepository)(implicit ec: ExecutionContext) {
 
   private val validateAge: Student => ValidationResult[Student] = student =>
     Either.cond(
-      student.age >= 0 && student.age <= 120,
+      student.age >= 0 && student.age <= 25,
       student,
       ErrorResponse("Invalid age")
     )
@@ -33,7 +33,8 @@ class StudentService(repo: StudentRepository)(implicit ec: ExecutionContext) {
       .fold(
         error => Future.successful(Left(error)),
         validStudent =>
-          repo.create(validStudent).map(_.toRight(ErrorResponse("Failed to create student")))
+          repo.create(validStudent)
+            .map(_.toRight(ErrorResponse("Failed to create student")))
       )
 
   def getStudent(id: Int): Future[Either[ErrorResponse, Student]] =
@@ -42,7 +43,8 @@ class StudentService(repo: StudentRepository)(implicit ec: ExecutionContext) {
   def updateStudent(id: Int, student: Student): Future[Either[ErrorResponse, Student]] =
     validate(student).fold(
       error => Future.successful(Left(error)),
-      validStudent => repo.update(id, validStudent).map(_.toRight(ErrorResponse(s"Student with id $id not found")))
+      validStudent => repo.update(id, validStudent)
+        .map(_.toRight(ErrorResponse(s"Student with id $id not found")))
     )
 
   def deleteStudent(id: Int): Future[Either[ErrorResponse, Unit]] =
