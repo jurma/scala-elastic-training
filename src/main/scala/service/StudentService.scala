@@ -1,7 +1,7 @@
 package service
 
-import model.{Student, ErrorResponse}
 import db.StudentRepository
+import model.{ErrorResponse, Student}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -29,34 +29,26 @@ class StudentService(repo: StudentRepository)(implicit ec: ExecutionContext) {
     } yield valid
 
   def createStudent(student: Student): Future[Either[ErrorResponse, Student]] =
-    validate(student) match {
-      case Left(error) => Future.successful(Left(error))
-      case Right(validStudent) =>
-        repo.create(validStudent).map {
-          case Some(created) => Right(created)
-          case None => Left(ErrorResponse("Failed to create student"))
-        }
-    }
+    validate(student)
+      .fold(
+        error => Future.successful(Left(error)),
+        validStudent =>
+          repo.create(validStudent).map(_.toRight(ErrorResponse("Failed to create student")))
+      )
 
   def getStudent(id: Int): Future[Either[ErrorResponse, Student]] =
-    repo.read(id).map {
-      case Some(student) => Right(student)
-      case None => Left(ErrorResponse(s"Student with id $id not found"))
-    }
+    repo.read(id).map(_.toRight(ErrorResponse(s"Student with id $id not found")))
 
   def updateStudent(id: Int, student: Student): Future[Either[ErrorResponse, Student]] =
     validate(student).fold(
       error => Future.successful(Left(error)),
-      validStudent => repo.update(id, validStudent).map {
-        case Some(updated) => Right(updated)
-        case None => Left(ErrorResponse(s"Student with id $id not found"))
-      }
+      validStudent => repo.update(id, validStudent).map(_.toRight(ErrorResponse(s"Student with id $id not found")))
     )
 
   def deleteStudent(id: Int): Future[Either[ErrorResponse, Unit]] =
-    repo.delete(id).map { deleted =>
-      if (deleted) Right(()) else Left(ErrorResponse(s"Student with id $id not found"))
-    }
+    repo.delete(id).map(
+      Either.cond(_, (), ErrorResponse(s"Student with id $id not found"))
+    )
 
   def listStudents(): Future[List[Student]] = repo.list()
 }
